@@ -1,12 +1,10 @@
 package main
 
 import (
+	"cisgo/awsservice"
 	"cisgo/awssession"
 	"flag"
 	"fmt"
-
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 func main() {
@@ -22,12 +20,9 @@ func main() {
 	// 	os.Exit(1)
 	// }
 
-	// p := session.SessionConfig.Profile
-	// r := session.SessionConfig.Region
-	// region = append(r, region)
-	// profile = append(p, profile)
-
+	// create the config
 	var config awssession.SessionConfig
+	// assign values
 	config.Profile = *profile
 	config.Region = *region
 
@@ -36,21 +31,9 @@ func main() {
 		fmt.Printf("Error: %v", err)
 	}
 
-	svc := ec2.New(sess)
-	input := &ec2.DescribeVpcsInput{}
-
-	result, err := svc.DescribeVpcs(input)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-		return
+	users := awsservice.ListUsers(sess)
+	for _, u := range users {
+		awsservice.ListMFA(sess, u.Name)
+		fmt.Println(u)
 	}
-
-	fmt.Println(result)
 }
