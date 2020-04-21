@@ -31,9 +31,36 @@ func main() {
 		fmt.Printf("Error: %v", err)
 	}
 
+	// user1 := &awsservice.User{
+	// 	Id:   "3456789",
+	// 	Name: "Pierre",
+	// }
+	// user1.Mfa.Serial = awsservice.ListMFA(sess, *user1)
+
+	// user2 := awsservice.User{
+	// 	Id:   "23456789",
+	// 	Name: "Bob",
+	// 	Mfa:  awsservice.Mfa{"serial"},
+	// }
+
+	// awsservice.ListUserInfo(*user1)
+	// awsservice.ListUserInfo(user2)
 	users := awsservice.ListUsers(sess)
 	for _, u := range users {
-		awsservice.ListMFA(sess, u.Name)
-		fmt.Println(u)
+		u.Mfa.Serial = awsservice.ListMFA(sess, u)
+		awsservice.ListUserInfo(u)
 	}
+	// mfa := &awsservice.Mfa{}
+	// mfa.ListMFA(sess, users.Name)
+
+	// for _, u := range users {
+	// 	fmt.Println("User:", u.Name)
+	// 	u.Mfa.ListMFA(sess, u)
+	// 	fmt.Println(u)
+	// 	awsservice.ListMFA(sess, u)
+	// 	fmt.Printf("User: %v - MFA: %v\n", u.Name, u.Mfa.Serial)
+	// 	for _, m := range mfa {
+	// 		fmt.Println("MFA:", m.Serial)
+	// 	}
+	// }
 }
