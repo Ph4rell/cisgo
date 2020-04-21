@@ -11,11 +11,21 @@ import (
 
 // Ensure multi-factor authentication (MFA) is enabled
 // for all IAM users that have a console password
-
 type User struct {
 	Id   string
 	Name string
-	MFA  bool
+	Mfa  Mfa
+}
+
+type Mfa struct {
+	Serial string
+}
+
+func ListUserInfo(u User) string {
+	fmt.Println("Name:", u.Name)
+	fmt.Println("Id:", u.Id)
+	fmt.Printf("MFA: %v\n", u.Mfa.Serial)
+	return "-----------------"
 }
 
 func ListUsers(sess *session.Session) (users []User) {
@@ -45,10 +55,10 @@ func ListUsers(sess *session.Session) (users []User) {
 	return users
 }
 
-func ListMFA(sess *session.Session, username string) (user []User) {
+func ListMFA(sess *session.Session, u User) (mfa string) {
 	svc := iam.New(sess)
 	input := &iam.ListMFADevicesInput{
-		UserName: aws.String(username),
+		UserName: aws.String(u.Name),
 	}
 
 	result, err := svc.ListMFADevices(input)
@@ -66,10 +76,9 @@ func ListMFA(sess *session.Session, username string) (user []User) {
 			fmt.Println(err.Error())
 		}
 	}
-	if len(result.MFADevices) > 0 {
-		user = append(user, User{
-			MFA: true,
-		})
+
+	for _, m := range result.MFADevices {
+		mfa = *m.SerialNumber
 	}
-	return user
+	return mfa
 }
