@@ -60,16 +60,22 @@ func main() {
 
 	for _, u := range result.UserDetailList {
 		users += 1
-		fmt.Println(*u.UserName)
+		//fmt.Println(*u)
 		// check if user got MFA
 		if awsservice.UserHasMFA(svc, u) {
 			fmt.Println("MFA found")
+		} else {
+			fmt.Println("MFA not activated")
 		}
 		// check if user got Admin rights
 		if awsservice.IsUserAdmin(svc, u, "AdministratorAccess") {
 			admins += 1
 		}
+		if awsservice.UserHasAccessKey(svc, u) {
+			fmt.Print("OK")
+		}
+
 	}
-	fmt.Printf("Number of user: %v\n", users)
-	fmt.Printf("Number of admin: %v\n", admins)
+	fmt.Printf("Number of users: %v\n", users)
+	fmt.Printf("Number of admins: %v\n", admins)
 }
