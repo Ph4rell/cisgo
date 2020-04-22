@@ -5,6 +5,9 @@ import (
 	"cisgo/awssession"
 	"flag"
 	"fmt"
+	"os"
+
+	"github.com/aws/aws-sdk-go/service/iam"
 )
 
 func main() {
@@ -31,36 +34,42 @@ func main() {
 		fmt.Printf("Error: %v", err)
 	}
 
-	// user1 := &awsservice.User{
-	// 	Id:   "3456789",
-	// 	Name: "Pierre",
-	// }
-	// user1.Mfa.Serial = awsservice.ListMFA(sess, *user1)
-
-	// user2 := awsservice.User{
-	// 	Id:   "23456789",
-	// 	Name: "Bob",
-	// 	Mfa:  awsservice.Mfa{"serial"},
-	// }
-
-	// awsservice.ListUserInfo(*user1)
-	// awsservice.ListUserInfo(user2)
-	users := awsservice.ListUsers(sess)
-	for _, u := range users {
-		u.Mfa.Serial = awsservice.ListMFA(sess, u)
-		awsservice.ListUserInfo(u)
-	}
-	// mfa := &awsservice.Mfa{}
-	// mfa.ListMFA(sess, users.Name)
-
+	//List all the users
+	// users := awsservice.ListUsers(sess)
 	// for _, u := range users {
-	// 	fmt.Println("User:", u.Name)
-	// 	u.Mfa.ListMFA(sess, u)
-	// 	fmt.Println(u)
-	// 	awsservice.ListMFA(sess, u)
-	// 	fmt.Printf("User: %v - MFA: %v\n", u.Name, u.Mfa.Serial)
-	// 	for _, m := range mfa {
-	// 		fmt.Println("MFA:", m.Serial)
+	// 	awsservice.GetUser(sess, u)
+	// 	u.Mfa.Serial = awsservice.ListMFA(sess, u)
+	// 	// if there is no MFA
+	// 	if u.Mfa.Serial == "" {
+	// 		u.Mfa.Serial = "MFA Missing"
 	// 	}
+	// 	awsservice.ListUserInfo(u)
 	// }
+	svc := iam.New(sess)
+	input := &iam.GetAccountAuthorizationDetailsInput{}
+
+	result, err := svc.GetAccountAuthorizationDetails(input)
+	if err != nil {
+		fmt.Println("Got error getting account details")
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	users := 0
+	admins := 0
+
+	for _, u := range result.UserDetailList {
+		users += 1
+		fmt.Println(*u.UserName)
+		// check if user got MFA
+		if awsservice.UserHasMFA(svc, u) {
+			fmt.Println("MFA found")
+		}
+		// check if user got Admin rights
+		if awsservice.IsUserAdmin(svc, u, "AdministratorAccess") {
+			admins += 1
+		}
+	}
+	fmt.Printf("Number of user: %v\n", users)
+	fmt.Printf("Number of admin: %v\n", admins)
 }
