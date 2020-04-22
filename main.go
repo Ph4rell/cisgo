@@ -1,12 +1,13 @@
 package main
 
 import (
+	"cisgo/awsservice"
 	"cisgo/awssession"
 	"flag"
 	"fmt"
+	"os"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/iam"
 )
 
 func main() {
@@ -22,12 +23,9 @@ func main() {
 	// 	os.Exit(1)
 	// }
 
-	// p := session.SessionConfig.Profile
-	// r := session.SessionConfig.Region
-	// region = append(r, region)
-	// profile = append(p, profile)
-
+	// create the config
 	var config awssession.SessionConfig
+	// assign values
 	config.Profile = *profile
 	config.Region = *region
 
@@ -36,21 +34,48 @@ func main() {
 		fmt.Printf("Error: %v", err)
 	}
 
-	svc := ec2.New(sess)
-	input := &ec2.DescribeVpcsInput{}
+	//List all the users
+	// users := awsservice.ListUsers(sess)
+	// for _, u := range users {
+	// 	awsservice.GetUser(sess, u)
+	// 	u.Mfa.Serial = awsservice.ListMFA(sess, u)
+	// 	// if there is no MFA
+	// 	if u.Mfa.Serial == "" {
+	// 		u.Mfa.Serial = "MFA Missing"
+	// 	}
+	// 	awsservice.ListUserInfo(u)
+	// }
+	svc := iam.New(sess)
+	input := &iam.GetAccountAuthorizationDetailsInput{}
 
-	result, err := svc.DescribeVpcs(input)
+	result, err := svc.GetAccountAuthorizationDetails(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-		return
+		fmt.Println("Got error getting account details")
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 
-	fmt.Println(result)
+	users := 0
+	admins := 0
+
+	for _, u := range result.UserDetailList {
+		users += 1
+		//fmt.Println(*u)
+		// check if user got MFA
+		if awsservice.UserHasMFA(svc, u) {
+			fmt.Println("MFA found")
+		} else {
+			fmt.Println("MFA not activated")
+		}
+		// check if user got Admin rights
+		if awsservice.IsUserAdmin(svc, u, "AdministratorAccess") {
+			admins += 1
+		}
+		if awsservice.UserHasAccessKey(svc, u) {
+			fmt.Print("OK")
+		}
+
+	}
+	fmt.Printf("Number of users: %v\n", users)
+	fmt.Printf("Number of admins: %v\n", admins)
 }
