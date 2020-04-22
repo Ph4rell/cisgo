@@ -28,6 +28,31 @@ func ListUserInfo(u User) string {
 	return "-----------------"
 }
 
+func GetUser(sess *session.Session, u User) (user []User) {
+	svc := iam.New(sess)
+	input := &iam.GetUserInput{
+		UserName: aws.String(u.Name),
+	}
+
+	result, err := svc.GetUser(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+			case iam.ErrCodeServiceFailureException:
+				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			fmt.Println(err.Error())
+		}
+		return
+	}
+	fmt.Println(result)
+	return user
+}
 func ListUsers(sess *session.Session) (users []User) {
 	svc := iam.New(sess)
 	input := &iam.ListUsersInput{}
@@ -53,32 +78,4 @@ func ListUsers(sess *session.Session) (users []User) {
 		})
 	}
 	return users
-}
-
-func ListMFA(sess *session.Session, u User) (mfa string) {
-	svc := iam.New(sess)
-	input := &iam.ListMFADevicesInput{
-		UserName: aws.String(u.Name),
-	}
-
-	result, err := svc.ListMFADevices(input)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-	}
-
-	for _, m := range result.MFADevices {
-		mfa = *m.SerialNumber
-	}
-	return mfa
 }
