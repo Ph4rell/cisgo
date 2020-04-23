@@ -5,7 +5,6 @@ import (
 	"cisgo/awssession"
 	"flag"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/service/iam"
 )
@@ -35,50 +34,20 @@ func main() {
 	}
 
 	svc := iam.New(sess)
-	input := &iam.GetAccountAuthorizationDetailsInput{}
 
-	result, err := svc.GetAccountAuthorizationDetails(input)
-	if err != nil {
-		fmt.Println("Got error getting account details")
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	type User struct {
-		Id         string
-		Arn        string
-		Name       string
-		MFA        bool
-		IsAdmin    bool
-		AccessKey  bool
-		AccessKeys []awsservice.AccessKey
-	}
-
-	var users []User
+	users := awsservice.ListUsers(svc)
 
 	usercount := 0
 	admincount := 0
 
-	for _, u := range result.UserDetailList {
-		users = append(users, User{
-			Id:         *u.UserId,
-			Arn:        *u.Arn,
-			Name:       *u.UserName,
-			MFA:        awsservice.UserHasMFA(svc, u),
-			IsAdmin:    awsservice.IsUserAdmin(svc, u, "AdministratorAccess"),
-			AccessKey:  awsservice.UserHasAccessKey(svc, u),
-			AccessKeys: awsservice.ListAccessKeys(svc, u.UserName),
-		})
-	}
-
 	for _, u := range users {
-		fmt.Println(u)
+		usercount += 1
+		if u.IsAdmin {
+			admincount += 1
+		}
+		awsservice.ListUserInfo(u)
 	}
 	fmt.Printf("Number of users: %v\n", usercount)
 	fmt.Printf("Number of admins: %v\n", admincount)
 
 }
-
-// func String(user *iam.UserDetail) string {
-// 	fmt.Printf("User: %v - MFA: %v - AccessKey: %v\n", user.UserName,
-// }
