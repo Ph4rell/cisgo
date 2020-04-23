@@ -2,79 +2,47 @@ package awsservice
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 )
 
-// Ensure multi-factor authentication (MFA) is enabled
-// for all IAM users that have a console password
 type User struct {
-	Id   string
-	Name string
-	Mfa  Mfa
-}
-
-type Mfa struct {
-	Serial string
+	Id         string
+	Arn        string
+	Name       string
+	MFA        bool
+	IsAdmin    bool
+	AccessKey  bool
+	AccessKeys []AccessKey
 }
 
 func ListUserInfo(u User) string {
-	fmt.Println("Name:", u.Name)
-	fmt.Println("Id:", u.Id)
-	fmt.Printf("MFA: %v\n", u.Mfa.Serial)
-	return "-----------------"
+	fmt.Printf("Name: %v - ID: %v\n", u.Name, u.Id)
+	fmt.Printf("IsAdmin: %v - MFA: %v\n", u.IsAdmin, u.MFA)
+	ListAccessKeysInfo(u.AccessKeys)
+	fmt.Println("----------")
+	return ""
 }
 
-func GetUser(sess *session.Session, u User) (user []User) {
-	svc := iam.New(sess)
-	input := &iam.GetUserInput{
-		UserName: aws.String(u.Name),
-	}
+func ListUsers(svc *iam.IAM) (users []User) {
+	input := &iam.GetAccountAuthorizationDetailsInput{}
 
-	result, err := svc.GetUser(input)
+	result, err := svc.GetAccountAuthorizationDetails(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-		return
+		fmt.Println("Got error getting account details")
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	fmt.Println(result)
-	return user
-}
-func ListUsers(sess *session.Session) (users []User) {
-	svc := iam.New(sess)
-	input := &iam.ListUsersInput{}
-
-	result, err := svc.ListUsers(input)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-		return
-	}
-	for _, u := range result.Users {
+	for _, u := range result.UserDetailList {
 		users = append(users, User{
-			Id:   *u.UserId,
-			Name: *u.UserName,
+			Id:         *u.UserId,
+			Arn:        *u.Arn,
+			Name:       *u.UserName,
+			MFA:        UserHasMFA(svc, u),
+			IsAdmin:    IsUserAdmin(svc, u, "AdministratorAccess"),
+			AccessKey:  UserHasAccessKey(svc, u),
+			AccessKeys: ListAccessKeys(svc, u.UserName),
 		})
 	}
 	return users
