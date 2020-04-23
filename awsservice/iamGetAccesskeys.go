@@ -2,10 +2,17 @@ package awsservice
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 )
+
+type AccessKey struct {
+	Id         string
+	CreateDate *time.Time
+	Status     string
+}
 
 func UserHasAccessKey(svc *iam.IAM, user *iam.UserDetail) bool {
 	input := &iam.ListAccessKeysInput{
@@ -20,7 +27,26 @@ func UserHasAccessKey(svc *iam.IAM, user *iam.UserDetail) bool {
 		if r.Status == aws.String("Active") {
 			return true
 		}
-		fmt.Println(r)
 	}
+	//fmt.Println(result)
 	return false
+}
+
+func ListAccessKeys(svc *iam.IAM, user *string) (keys []AccessKey) {
+	input := &iam.ListAccessKeysInput{
+		UserName: aws.String(*user),
+	}
+	result, err := svc.ListAccessKeys(input)
+	if err != nil {
+		fmt.Sprintf("Error: %v", err)
+	}
+	for _, r := range result.AccessKeyMetadata {
+		keys = append(keys, AccessKey{
+			Id:         *r.AccessKeyId,
+			CreateDate: r.CreateDate,
+			Status:     *r.Status,
+		})
+	}
+	//fmt.Println(keys)
+	return keys
 }
