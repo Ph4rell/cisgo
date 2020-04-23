@@ -34,17 +34,6 @@ func main() {
 		fmt.Printf("Error: %v", err)
 	}
 
-	//List all the users
-	// users := awsservice.ListUsers(sess)
-	// for _, u := range users {
-	// 	awsservice.GetUser(sess, u)
-	// 	u.Mfa.Serial = awsservice.ListMFA(sess, u)
-	// 	// if there is no MFA
-	// 	if u.Mfa.Serial == "" {
-	// 		u.Mfa.Serial = "MFA Missing"
-	// 	}
-	// 	awsservice.ListUserInfo(u)
-	// }
 	svc := iam.New(sess)
 	input := &iam.GetAccountAuthorizationDetailsInput{}
 
@@ -55,27 +44,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	users := 0
-	admins := 0
+	type User struct {
+		Id         string
+		Arn        string
+		Name       string
+		MFA        bool
+		IsAdmin    bool
+		AccessKey  bool
+		AccessKeys []awsservice.AccessKey
+	}
+
+	var users []User
+
+	usercount := 0
+	admincount := 0
 
 	for _, u := range result.UserDetailList {
-		users += 1
-		//fmt.Println(*u)
-		// check if user got MFA
-		if awsservice.UserHasMFA(svc, u) {
-			fmt.Println("MFA found")
-		} else {
-			fmt.Println("MFA not activated")
-		}
-		// check if user got Admin rights
-		if awsservice.IsUserAdmin(svc, u, "AdministratorAccess") {
-			admins += 1
-		}
-		if awsservice.UserHasAccessKey(svc, u) {
-			fmt.Print("OK")
-		}
-
+		users = append(users, User{
+			Id:         *u.UserId,
+			Arn:        *u.Arn,
+			Name:       *u.UserName,
+			MFA:        awsservice.UserHasMFA(svc, u),
+			IsAdmin:    awsservice.IsUserAdmin(svc, u, "AdministratorAccess"),
+			AccessKey:  awsservice.UserHasAccessKey(svc, u),
+			AccessKeys: awsservice.ListAccessKeys(svc, u.UserName),
+		})
 	}
-	fmt.Printf("Number of users: %v\n", users)
-	fmt.Printf("Number of admins: %v\n", admins)
+
+	for _, u := range users {
+		fmt.Println(u)
+	}
+	fmt.Printf("Number of users: %v\n", usercount)
+	fmt.Printf("Number of admins: %v\n", admincount)
+
 }
+
+// func String(user *iam.UserDetail) string {
+// 	fmt.Printf("User: %v - MFA: %v - AccessKey: %v\n", user.UserName,
+// }
