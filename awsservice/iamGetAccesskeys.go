@@ -14,6 +14,13 @@ type AccessKey struct {
 	Status     string
 }
 
+func ListAccessKeysInfo(a []AccessKey) string {
+	for _, a := range a {
+		fmt.Printf("AccessKeyId: %v - CreateDate: %v - Status: %v\n", a.Id, a.CreateDate, a.Status)
+	}
+	return ""
+}
+
 func UserHasAccessKey(svc *iam.IAM, user *iam.UserDetail) bool {
 	input := &iam.ListAccessKeysInput{
 		UserName: aws.String(*user.UserName),
