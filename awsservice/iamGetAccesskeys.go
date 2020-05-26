@@ -9,15 +9,16 @@ import (
 )
 
 type AccessKey struct {
-	Id         string
-	CreateDate *time.Time
-	Status     string
-	LastUsed   *time.Time
+	Id          string
+	CreateDate  *time.Time
+	Status      string
+	LastUsed    *time.Time
+	IsUnusedFor int
 }
 
 func ListAccessKeysInfo(a []AccessKey) string {
 	for _, a := range a {
-		fmt.Printf("AccessKeyId: %v - CreateDate: %v - Status: %v - LastUsed: %v\n", a.Id, a.CreateDate, a.Status, a.LastUsed)
+		fmt.Printf("AccessKeyId: %v - CreateDate: %v - Status: %v - LastUsed: %v - IsUnusedFor: %v\n", a.Id, a.CreateDate, a.Status, a.LastUsed, a.IsUnusedFor)
 	}
 	return ""
 }
@@ -52,10 +53,11 @@ func ListAccessKeys(svc *iam.IAM, user *string) (keys []AccessKey) {
 	}
 	for _, r := range result.AccessKeyMetadata {
 		keys = append(keys, AccessKey{
-			Id:         *r.AccessKeyId,
-			CreateDate: r.CreateDate,
-			Status:     *r.Status,
-			LastUsed:   getAccessKeyLastUsed(svc, *r.AccessKeyId),
+			Id:          *r.AccessKeyId,
+			CreateDate:  r.CreateDate,
+			Status:      *r.Status,
+			LastUsed:    getAccessKeyLastUsed(svc, *r.AccessKeyId),
+			IsUnusedFor: IsUnusedFor(svc, *r.AccessKeyId),
 		})
 	}
 	return keys
@@ -72,4 +74,21 @@ func getAccessKeyLastUsed(svc *iam.IAM, key string) *time.Time {
 		fmt.Println("Error", err)
 	}
 	return result.AccessKeyLastUsed.LastUsedDate
+}
+
+func IsUnusedFor(svc *iam.IAM, key string) int {
+	result, err := svc.GetAccessKeyLastUsed(&iam.GetAccessKeyLastUsedInput{
+		AccessKeyId: aws.String(key),
+	})
+	if err != nil {
+		fmt.Println("Error", err)
+	}
+	date := result.AccessKeyLastUsed.LastUsedDate
+	if date == nil {
+		return 0
+	}
+
+	diff := time.Since(*date)
+	days := int(diff.Hours() / 24)
+	return days
 }
