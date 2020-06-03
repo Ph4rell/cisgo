@@ -39,7 +39,6 @@ func main() {
 	}
 
 	svc := iam.New(sess)
-
 	users := awsservice.ListUsers(svc)
 
 	usercount := 0
@@ -73,4 +72,8 @@ func main() {
 		}
 	}
 	fmt.Printf("Customer Policy count: %v - Unused: %v\n", countPolicy, unusedPolicy)
+	fmt.Println("----------------")
+
+	policy := awsservice.GetAccountPasswordPolicy(svc)
+	awsservice.ListPasswordPolicy(policy)
 }
